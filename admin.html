@@ -336,6 +336,59 @@
   .modal-close:hover { opacity:1; }
   .modal-body { padding:24px; }
 
+  /* IMAGE SOURCE TOGGLE */
+  .img-source-toggle {
+    display:flex; gap:0; margin-bottom:12px;
+    border:1px solid var(--border); overflow:hidden;
+  }
+  .img-toggle-btn {
+    flex:1; background:transparent;
+    border:none; color: var(--muted);
+    font-family:'Rajdhani', sans-serif; font-size:.75rem;
+    font-weight:600; letter-spacing:.15em; text-transform:uppercase;
+    padding:9px 12px; cursor:pointer; transition: all .2s;
+  }
+  .img-toggle-btn.active { background: rgba(0,255,231,.1); color: var(--neon); }
+  .img-toggle-btn:not(:last-child) { border-right:1px solid var(--border); }
+
+  /* UPLOAD DROP ZONE */
+  .upload-zone {
+    width:100%;
+    border:2px dashed rgba(0,255,231,.25);
+    background: var(--input-bg);
+    padding:28px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .2s, background .2s;
+    position:relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--neon);
+    background: rgba(0,255,231,.05);
+  }
+  .upload-zone input[type=file] {
+    position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+  }
+  .upload-icon { font-size:2rem; margin-bottom:8px; opacity:.5; }
+  .upload-text { font-size:.8rem; color: var(--muted); letter-spacing:.1em; }
+  .upload-text strong { color: var(--neon); }
+  .upload-progress {
+    margin-top:10px; height:3px;
+    background: rgba(0,255,231,.15);
+    display:none; overflow:hidden;
+  }
+  .upload-progress-bar {
+    height:100%; background: var(--neon);
+    box-shadow:0 0 8px var(--neon);
+    width:0%; transition: width .3s;
+  }
+  .upload-status {
+    font-size:.75rem; margin-top:8px;
+    color: var(--muted); display:none;
+  }
+  .upload-status.done { color: var(--green); }
+  .upload-status.err { color: var(--neon2); }
+
   @media(max-width:700px) {
     .sidebar { transform:translateX(-100%); }
     .main { margin-left:0; padding:20px 16px; }
@@ -437,8 +490,24 @@
               <input type="text" id="fValor" placeholder="Ex: 29.90 ou deixe vazio para grátis">
             </div>
             <div class="form-group">
-              <label>URL da Imagem</label>
-              <input type="text" id="fImagem" placeholder="https://..." oninput="previewImg()">
+              <label>Imagem do Produto</label>
+              <div class="img-source-toggle">
+                <button type="button" class="img-toggle-btn active" id="btnUrl" onclick="setImgMode('url')">🔗 URL</button>
+                <button type="button" class="img-toggle-btn" id="btnGal" onclick="setImgMode('galeria')">📁 Galeria</button>
+              </div>
+              <div id="modeUrl">
+                <input type="text" id="fImagem" placeholder="https://..." oninput="previewImg()">
+              </div>
+              <div id="modeGaleria" style="display:none">
+                <div class="upload-zone" id="dropZone">
+                  <input type="file" id="fGalleryFile" accept="image/*" onchange="handleFileSelect(this.files[0])">
+                  <div class="upload-icon">🖼️</div>
+                  <div class="upload-text">Arraste uma imagem ou <strong>clique para selecionar</strong></div>
+                  <div class="upload-text" style="font-size:.7rem;margin-top:4px">JPG, PNG, GIF, WEBP</div>
+                  <div class="upload-progress" id="uploadProgress"><div class="upload-progress-bar" id="uploadBar"></div></div>
+                  <div class="upload-status" id="uploadStatus"></div>
+                </div>
+              </div>
               <img id="imgPreview" class="img-preview" alt="preview">
             </div>
           </div>
@@ -488,7 +557,26 @@
         <div class="form-group"><label>Valor (R$)</label><input type="text" id="eValor"></div>
       </div>
       <div class="form-group"><label>Bio / Descrição</label><textarea id="eBio"></textarea></div>
-      <div class="form-group"><label>URL da Imagem</label><input type="text" id="eImagem"></div>
+      <div class="form-group">
+        <label>Imagem</label>
+        <div class="img-source-toggle">
+          <button type="button" class="img-toggle-btn active" id="eBtnUrl" onclick="setEditImgMode('url')">🔗 URL</button>
+          <button type="button" class="img-toggle-btn" id="eBtnGal" onclick="setEditImgMode('galeria')">📁 Galeria</button>
+        </div>
+        <div id="eModeUrl">
+          <input type="text" id="eImagem" placeholder="https://...">
+        </div>
+        <div id="eModeGaleria" style="display:none">
+          <div class="upload-zone" id="eDropZone">
+            <input type="file" id="eGalleryFile" accept="image/*" onchange="handleEditFileSelect(this.files[0])">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">Arraste ou <strong>clique para selecionar</strong></div>
+            <div class="upload-progress" id="eUploadProgress"><div class="upload-progress-bar" id="eUploadBar"></div></div>
+            <div class="upload-status" id="eUploadStatus"></div>
+          </div>
+        </div>
+        <img id="eImgPreview" class="img-preview" alt="preview" style="display:none">
+      </div>
       <button class="submit-btn" onclick="saveEdit()">💾 SALVAR ALTERAÇÕES</button>
     </div>
   </div>
@@ -498,6 +586,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getDatabase, ref, push, set, remove, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBzPZpW13eHxcXSUKUuCD0viXvCRMDbAE0",
@@ -512,12 +601,14 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+  const storage = getStorage(app);
 
-  // Simple admin credentials (change as needed)
   const ADMIN_USER = 'admin';
   const ADMIN_PASS = 'ffhacks123';
 
   let allPosts = [];
+  let uploadedImageUrl = '';     // for new post
+  let editUploadedImageUrl = ''; // for edit modal
 
   /* ------- LOGIN ------- */
   window.doLogin = () => {
@@ -536,7 +627,6 @@
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
   };
-  // Enter key on login
   document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') window.doLogin(); });
 
   /* ------- TAB NAVIGATION ------- */
@@ -545,6 +635,106 @@
     document.querySelectorAll('.nav-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','novo','produtos'][i]===tab));
     const titles = {dashboard:'Dashboard <span>_</span>', novo:'Novo Produto <span>_</span>', produtos:'Produtos <span>_</span>'};
     document.getElementById('pageTitle').innerHTML = titles[tab];
+  };
+
+  /* ------- IMAGE MODE TOGGLE (new post) ------- */
+  window.setImgMode = (mode) => {
+    const isUrl = mode === 'url';
+    document.getElementById('modeUrl').style.display = isUrl ? 'block' : 'none';
+    document.getElementById('modeGaleria').style.display = isUrl ? 'none' : 'block';
+    document.getElementById('btnUrl').classList.toggle('active', isUrl);
+    document.getElementById('btnGal').classList.toggle('active', !isUrl);
+    if (isUrl) { uploadedImageUrl = ''; }
+    const prev = document.getElementById('imgPreview');
+    prev.style.display='none'; prev.src='';
+  };
+
+  /* ------- IMAGE MODE TOGGLE (edit modal) ------- */
+  window.setEditImgMode = (mode) => {
+    const isUrl = mode === 'url';
+    document.getElementById('eModeUrl').style.display = isUrl ? 'block' : 'none';
+    document.getElementById('eModeGaleria').style.display = isUrl ? 'none' : 'block';
+    document.getElementById('eBtnUrl').classList.toggle('active', isUrl);
+    document.getElementById('eBtnGal').classList.toggle('active', !isUrl);
+    if (isUrl) editUploadedImageUrl = '';
+  };
+
+  /* ------- DRAG & DROP ------- */
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFileSelect(file);
+  });
+
+  /* ------- UPLOAD FILE (new post) ------- */
+  window.handleFileSelect = (file) => {
+    if (!file) return;
+    const progress = document.getElementById('uploadProgress');
+    const bar = document.getElementById('uploadBar');
+    const status = document.getElementById('uploadStatus');
+    const preview = document.getElementById('imgPreview');
+
+    progress.style.display = 'block';
+    status.style.display = 'block';
+    status.className = 'upload-status';
+    status.textContent = 'Enviando imagem...';
+    bar.style.width = '0%';
+    uploadedImageUrl = '';
+
+    const storageRef = sRef(storage, `hacks/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+
+    task.on('state_changed',
+      snap => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        bar.style.width = pct + '%';
+      },
+      err => {
+        status.className = 'upload-status err';
+        status.textContent = '⚠ Erro: ' + err.message;
+      },
+      async () => {
+        uploadedImageUrl = await getDownloadURL(task.snapshot.ref);
+        status.className = 'upload-status done';
+        status.textContent = '✔ Imagem enviada com sucesso!';
+        preview.src = uploadedImageUrl;
+        preview.style.display = 'block';
+      }
+    );
+  };
+
+  /* ------- UPLOAD FILE (edit modal) ------- */
+  window.handleEditFileSelect = (file) => {
+    if (!file) return;
+    const progress = document.getElementById('eUploadProgress');
+    const bar = document.getElementById('eUploadBar');
+    const status = document.getElementById('eUploadStatus');
+    const preview = document.getElementById('eImgPreview');
+
+    progress.style.display = 'block';
+    status.style.display = 'block';
+    status.className = 'upload-status';
+    status.textContent = 'Enviando imagem...';
+    bar.style.width = '0%';
+    editUploadedImageUrl = '';
+
+    const storageRef = sRef(storage, `hacks/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+
+    task.on('state_changed',
+      snap => { bar.style.width = Math.round((snap.bytesTransferred/snap.totalBytes)*100)+'%'; },
+      err => { status.className='upload-status err'; status.textContent='⚠ Erro: '+err.message; },
+      async () => {
+        editUploadedImageUrl = await getDownloadURL(task.snapshot.ref);
+        status.className='upload-status done';
+        status.textContent='✔ Enviada!';
+        preview.src = editUploadedImageUrl;
+        preview.style.display = 'block';
+      }
+    );
   };
 
   /* ------- FIREBASE LISTENER ------- */
@@ -619,12 +809,21 @@
     const categoria = document.getElementById('fCategoria').value;
     const bio = document.getElementById('fBio').value.trim();
     const valor = document.getElementById('fValor').value.trim();
-    const imagem = document.getElementById('fImagem').value.trim();
-    const alert = document.getElementById('formAlert');
+    const urlMode = document.getElementById('modeUrl').style.display !== 'none';
+    const imagem = urlMode
+      ? document.getElementById('fImagem').value.trim()
+      : uploadedImageUrl;
+
+    const alertEl = document.getElementById('formAlert');
 
     if (!titulo || !categoria || !bio) {
-      alert.className='alert error'; alert.style.display='block';
-      alert.textContent='⚠ Preencha título, categoria e descrição.';
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Preencha título, categoria e descrição.';
+      return;
+    }
+    if (!urlMode && !uploadedImageUrl) {
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Aguarde o upload da imagem terminar.';
       return;
     }
 
@@ -634,17 +833,21 @@
     try {
       const newRef = push(ref(db,'hacks'));
       await set(newRef, { titulo, categoria, bio, valor, imagem, timestamp: Date.now() });
-      alert.className='alert success'; alert.style.display='block';
-      alert.textContent='✔ Produto publicado com sucesso!';
+      alertEl.className='alert success'; alertEl.style.display='block';
+      alertEl.textContent='✔ Produto publicado com sucesso!';
       ['fTitulo','fBio','fValor','fImagem'].forEach(id => document.getElementById(id).value='');
       document.getElementById('fCategoria').value='';
       document.getElementById('imgPreview').style.display='none';
+      uploadedImageUrl = '';
+      document.getElementById('uploadStatus').style.display='none';
+      document.getElementById('uploadProgress').style.display='none';
+      document.getElementById('uploadBar').style.width='0%';
     } catch(e) {
-      alert.className='alert error'; alert.style.display='block';
-      alert.textContent='⚠ Erro ao publicar: '+e.message;
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Erro ao publicar: '+e.message;
     }
     btn.disabled=false; btn.textContent='⚡ PUBLICAR PRODUTO';
-    setTimeout(()=>{ alert.style.display='none'; },4000);
+    setTimeout(()=>{ alertEl.style.display='none'; },4000);
   };
 
   /* ------- DELETE ------- */
@@ -663,18 +866,28 @@
     document.getElementById('eValor').value = p.valor||'';
     document.getElementById('eBio').value = p.bio||p.descricao||'';
     document.getElementById('eImagem').value = p.imagem||'';
+    editUploadedImageUrl = '';
+    // show URL mode by default on open
+    setEditImgMode('url');
+    const prev = document.getElementById('eImgPreview');
+    if (p.imagem) { prev.src=p.imagem; prev.style.display='block'; } else { prev.style.display='none'; }
     document.getElementById('editOverlay').classList.add('open');
   };
   window.closeEdit = () => document.getElementById('editOverlay').classList.remove('open');
 
   window.saveEdit = async () => {
     const id = document.getElementById('editId').value;
+    const editUrlMode = document.getElementById('eModeUrl').style.display !== 'none';
+    const imagem = editUrlMode
+      ? document.getElementById('eImagem').value.trim()
+      : (editUploadedImageUrl || document.getElementById('eImagem').value.trim());
+
     await update(ref(db,'hacks/'+id), {
       titulo: document.getElementById('eTitulo').value.trim(),
       categoria: document.getElementById('eCategoria').value,
       valor: document.getElementById('eValor').value.trim(),
       bio: document.getElementById('eBio').value.trim(),
-      imagem: document.getElementById('eImagem').value.trim(),
+      imagem,
     });
     window.closeEdit();
   };
