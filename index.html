@@ -476,7 +476,7 @@
         <div class="modal-bio">${p.bio || p.descricao || 'Sem descrição disponível.'}</div>
         <div class="modal-price-row">
           <span class="modal-price">${p.valor ? 'R$ '+p.valor : 'GRÁTIS'}</span>
-          <button class="modal-buy-btn">Adquirir Agora</button>
+          <a href="https://wa.me/5515996228860?text=Olá!%20Tenho%20interesse%20no%20produto%3A%20${encodeURIComponent(p.titulo||'')}" target="_blank" style="text-decoration:none"><button class="modal-buy-btn">Adquirir Agora</button></a>
         </div>
       </div>
     `;
