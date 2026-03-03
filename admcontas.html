@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FF CONTAS — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon: #ff9500;
+    --neon2: #ff003c;
+    --accent: #ffcc00;
+    --green: #00ff88;
+    --bg: #080502;
+    --sidebar: #0d0800;
+    --card: #120a00;
+    --input-bg: #1a0f00;
+    --border: rgba(255,149,0,.15);
+    --text: #f0dfc8;
+    --muted: #6a4820;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); font-family:'Rajdhani',sans-serif; color:var(--text); min-height:100vh; overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(255,149,0,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,149,0,.025) 1px,transparent 1px);
+    background-size:40px 40px; pointer-events:none; z-index:0;
+  }
+
+  /* LOGIN */
+  .login-screen { position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center; }
+  .login-box {
+    background:var(--card); border:1px solid var(--neon);
+    box-shadow:0 0 60px rgba(255,149,0,.15);
+    padding:48px 40px; width:100%; max-width:400px; text-align:center;
+  }
+  .login-logo {
+    font-family:'Orbitron',monospace; font-size:1.7rem; font-weight:900;
+    background:linear-gradient(90deg,var(--neon),var(--accent));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 10px var(--neon)); margin-bottom:6px;
+  }
+  .login-sub { color:var(--muted); font-size:.78rem; letter-spacing:.2em; text-transform:uppercase; margin-bottom:34px; }
+  .login-input {
+    width:100%; background:var(--input-bg); border:1px solid var(--border);
+    color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.9rem;
+    padding:12px 16px; margin-bottom:13px; outline:none; transition:border-color .2s;
+  }
+  .login-input:focus { border-color:var(--neon); }
+  .login-btn {
+    width:100%; background:linear-gradient(90deg,var(--neon),var(--accent));
+    border:none; color:#000; font-family:'Orbitron',monospace; font-size:.8rem;
+    font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+    padding:14px; cursor:pointer; transition:box-shadow .2s; margin-top:5px;
+  }
+  .login-btn:hover { box-shadow:0 0 30px var(--neon); }
+  .login-err { color:var(--neon2); font-size:.8rem; margin-top:11px; display:none; }
+
+  /* LAYOUT */
+  .layout { display:none; min-height:100vh; position:relative; z-index:1; }
+  .layout.visible { display:flex; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width:240px; background:var(--sidebar);
+    border-right:1px solid var(--border);
+    position:fixed; top:0; left:0; bottom:0; z-index:50;
+    display:flex; flex-direction:column;
+  }
+  .sidebar-logo { padding:26px 22px 18px; border-bottom:1px solid var(--border); }
+  .sidebar-logo .title {
+    font-family:'Orbitron',monospace; font-size:1rem; font-weight:900;
+    background:linear-gradient(90deg,var(--neon),var(--accent));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .sidebar-logo .sub { font-size:.62rem; letter-spacing:.3em; color:var(--muted); text-transform:uppercase; margin-top:3px; }
+  .nav { padding:18px 0; flex:1; }
+  .nav-item {
+    display:flex; align-items:center; gap:11px;
+    padding:12px 22px; font-size:.88rem; font-weight:600;
+    letter-spacing:.05em; color:var(--muted); cursor:pointer;
+    border-left:3px solid transparent; transition:all .2s;
+  }
+  .nav-item:hover { color:var(--text); background:rgba(255,149,0,.04); }
+  .nav-item.active { color:var(--neon); border-left-color:var(--neon); background:rgba(255,149,0,.06); }
+  .nav-icon { font-size:1rem; }
+  .sidebar-footer {
+    padding:18px 22px; border-top:1px solid var(--border);
+    font-size:.68rem; letter-spacing:.15em; color:var(--muted); text-transform:uppercase;
+  }
+  .online-dot {
+    display:inline-block; width:6px; height:6px;
+    background:var(--green); border-radius:50%;
+    box-shadow:0 0 8px var(--green); margin-right:5px;
+    animation:blink 2s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  /* MAIN */
+  .main { margin-left:240px; flex:1; padding:30px; min-height:100vh; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+  .page-title { font-family:'Orbitron',monospace; font-size:1.2rem; font-weight:700; color:#fff; letter-spacing:.1em; }
+  .page-title span { color:var(--neon); }
+  .logout-btn {
+    background:transparent; border:1px solid var(--neon2); color:var(--neon2);
+    font-family:'Rajdhani',sans-serif; font-size:.78rem; font-weight:600;
+    letter-spacing:.15em; text-transform:uppercase; padding:7px 16px; cursor:pointer; transition:all .2s;
+  }
+  .logout-btn:hover { background:var(--neon2); color:#fff; }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; margin-bottom:28px; }
+  .stat-card {
+    background:var(--card); border:1px solid var(--border);
+    padding:18px; position:relative; overflow:hidden;
+  }
+  .stat-card::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+    background:var(--neon); transform:scaleX(0); transform-origin:left; transition:transform .4s;
+  }
+  .stat-card:hover::after { transform:scaleX(1); }
+  .stat-label { font-size:.62rem; letter-spacing:.25em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+  .stat-value { font-family:'Orbitron',monospace; font-size:1.7rem; font-weight:900; color:#fff; }
+  .stat-value.green { color:var(--green); text-shadow:0 0 15px var(--green); }
+  .stat-value.gold { color:var(--accent); text-shadow:0 0 15px var(--accent); }
+  .stat-value.red { color:var(--neon2); }
+
+  /* PANEL */
+  .panel { background:var(--card); border:1px solid var(--border); overflow:hidden; }
+  .panel-header {
+    padding:16px 22px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-title { font-family:'Orbitron',monospace; font-size:.82rem; font-weight:700; letter-spacing:.1em; color:var(--neon); }
+  .panel-body { padding:22px; }
+
+  /* FORM */
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:.68rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; font-weight:600; }
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    width:100%; background:var(--input-bg); border:1px solid var(--border);
+    color:var(--text); font-family:'Share Tech Mono',monospace; font-size:.84rem;
+    padding:10px 13px; outline:none; transition:border-color .2s, box-shadow .2s; resize:vertical;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus { border-color:var(--neon); box-shadow:0 0 0 2px rgba(255,149,0,.08); }
+  .form-group textarea { min-height:85px; }
+  .form-group select { appearance:none; cursor:pointer; }
+  .img-preview { width:100%; height:130px; object-fit:cover; background:var(--input-bg); display:none; margin-top:9px; border:1px solid var(--border); }
+
+  /* IMG TOGGLE */
+  .img-source-toggle { display:flex; gap:0; margin-bottom:11px; border:1px solid var(--border); overflow:hidden; }
+  .img-toggle-btn {
+    flex:1; background:transparent; border:none; color:var(--muted);
+    font-family:'Rajdhani',sans-serif; font-size:.74rem; font-weight:600;
+    letter-spacing:.15em; text-transform:uppercase; padding:9px 10px; cursor:pointer; transition:all .2s;
+  }
+  .img-toggle-btn.active { background:rgba(255,149,0,.1); color:var(--neon); }
+  .img-toggle-btn:not(:last-child) { border-right:1px solid var(--border); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    width:100%; border:2px dashed rgba(255,149,0,.25); background:var(--input-bg);
+    padding:26px 14px; text-align:center; cursor:pointer;
+    transition:border-color .2s, background .2s; position:relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over { border-color:var(--neon); background:rgba(255,149,0,.05); }
+  .upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .upload-icon { font-size:1.8rem; margin-bottom:7px; opacity:.45; }
+  .upload-text { font-size:.78rem; color:var(--muted); letter-spacing:.08em; }
+  .upload-text strong { color:var(--neon); }
+  .upload-progress { margin-top:9px; height:3px; background:rgba(255,149,0,.15); display:none; overflow:hidden; }
+  .upload-progress-bar { height:100%; background:var(--neon); box-shadow:0 0 8px var(--neon); width:0%; transition:width .3s; }
+  .upload-status { font-size:.73rem; margin-top:7px; color:var(--muted); display:none; }
+  .upload-status.done { color:var(--green); }
+  .upload-status.err { color:var(--neon2); }
+
+  /* SUBMIT */
+  .submit-btn {
+    width:100%; background:linear-gradient(90deg,var(--neon),var(--accent));
+    border:none; color:#000; font-family:'Orbitron',monospace;
+    font-size:.78rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+    padding:13px; cursor:pointer; transition:box-shadow .2s, opacity .2s;
+  }
+  .submit-btn:hover { box-shadow:0 0 30px var(--neon); }
+  .submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* ALERT */
+  .alert { padding:11px 15px; margin-bottom:18px; font-size:.83rem; letter-spacing:.05em; display:none; border-left:3px solid; }
+  .alert.success { background:rgba(0,255,136,.08); border-color:var(--green); color:var(--green); }
+  .alert.error { background:rgba(255,0,60,.08); border-color:var(--neon2); color:var(--neon2); }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.83rem; }
+  thead tr { border-bottom:1px solid var(--border); }
+  th {
+    text-align:left; padding:10px 13px;
+    font-family:'Orbitron',monospace; font-size:.58rem;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--neon); font-weight:400;
+  }
+  tbody tr { border-bottom:1px solid rgba(255,149,0,.05); transition:background .15s; }
+  tbody tr:hover { background:rgba(255,149,0,.03); }
+  td { padding:11px 13px; vertical-align:middle; }
+  td.title-cell { font-weight:600; color:#fff; max-width:170px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  td.cat-cell { color:var(--neon2); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }
+  td.price-cell { font-family:'Orbitron',monospace; color:var(--accent); font-size:.82rem; }
+  td.level-cell { font-family:'Orbitron',monospace; color:var(--neon); font-size:.78rem; font-weight:700; }
+  .thumb { width:44px; height:36px; object-fit:cover; border:1px solid var(--border); }
+  .thumb-placeholder { width:44px; height:36px; background:#1a0f00; display:flex; align-items:center; justify-content:center; font-size:1.1rem; color:rgba(255,149,0,.4); }
+  .action-btn {
+    background:transparent; border:1px solid; font-family:'Rajdhani',sans-serif;
+    font-size:.73rem; letter-spacing:.1em; text-transform:uppercase;
+    padding:5px 11px; cursor:pointer; transition:all .2s; margin-right:5px;
+  }
+  .del-btn { border-color:var(--neon2); color:var(--neon2); }
+  .del-btn:hover { background:var(--neon2); color:#fff; }
+  .edit-btn { border-color:var(--neon); color:var(--neon); }
+  .edit-btn:hover { background:var(--neon); color:#000; }
+  .empty-row td { text-align:center; padding:40px; color:var(--muted); font-family:'Orbitron',monospace; font-size:.72rem; letter-spacing:.2em; }
+
+  /* EDIT MODAL */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.87); backdrop-filter:blur(8px);
+    z-index:2000; display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal {
+    background:var(--card); border:1px solid var(--neon);
+    box-shadow:0 0 60px rgba(255,149,0,.2);
+    max-width:560px; width:100%; max-height:90vh; overflow-y:auto;
+    transform:scale(.92); transition:transform .3s;
+  }
+  .modal-overlay.open .modal { transform:scale(1); }
+  .modal-header {
+    padding:18px 22px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-header-title { font-family:'Orbitron',monospace; font-size:.86rem; color:var(--neon); letter-spacing:.1em; }
+  .modal-close { background:none; border:none; color:#fff; font-size:1.3rem; cursor:pointer; opacity:.5; transition:opacity .2s; }
+  .modal-close:hover { opacity:1; }
+  .modal-body { padding:22px; }
+
+  @media(max-width:700px) {
+    .sidebar { transform:translateX(-100%); }
+    .main { margin-left:0; padding:18px 14px; }
+    .form-row { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">FF CONTAS</div>
+    <div class="login-sub">Admin — Contas Nível 15</div>
+    <input type="text" class="login-input" id="loginUser" placeholder="Usuário" autocomplete="off">
+    <input type="password" class="login-input" id="loginPass" placeholder="Senha">
+    <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+    <div class="login-err" id="loginErr">⚠ Credenciais inválidas</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout" id="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="title">FF CONTAS</div>
+      <div class="sub">// Admin Nível 15</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showTab('dashboard')"><span class="nav-icon">★</span> Dashboard</div>
+      <div class="nav-item" onclick="showTab('novo')"><span class="nav-icon">＋</span> Nova Conta</div>
+      <div class="nav-item" onclick="showTab('contas')"><span class="nav-icon">◈</span> Contas</div>
+    </nav>
+    <div class="sidebar-footer"><span class="online-dot"></span>Firebase Conectado</div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard <span>_</span></div>
+      <button class="logout-btn" onclick="doLogout()">Sair</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Contas</div><div class="stat-value" id="statTotal">—</div></div>
+        <div class="stat-card"><div class="stat-label">Categorias</div><div class="stat-value green" id="statCats">—</div></div>
+        <div class="stat-card"><div class="stat-label">Menor Preço</div><div class="stat-value gold" id="statMin">—</div></div>
+        <div class="stat-card"><div class="stat-label">Maior Preço</div><div class="stat-value red" id="statMax">—</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Últimas Contas Cadastradas</div></div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th></th><th>Título</th><th>Categoria</th><th>Nível</th><th>Valor</th><th>Data</th></tr></thead>
+              <tbody id="recentTable"><tr class="empty-row"><td colspan="6">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVA CONTA -->
+    <div id="tab-novo" style="display:none">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Adicionar Nova Conta</div></div>
+        <div class="panel-body">
+          <div id="formAlert" class="alert"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Título da Conta *</label>
+              <input type="text" id="fTitulo" placeholder="Ex: Conta FF Nível 15 Diamante">
+            </div>
+            <div class="form-group">
+              <label>Categoria *</label>
+              <select id="fCategoria">
+                <option value="">Selecione...</option>
+                <option>Diamante</option>
+                <option>Heroico</option>
+                <option>Grão-Mestre</option>
+                <option>Ouro</option>
+                <option>Platina</option>
+                <option>Bronze</option>
+                <option>Iniciante</option>
+                <option>Outro</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nível da Conta</label>
+              <input type="text" id="fNivel" placeholder="Ex: 15, 20, 30...">
+            </div>
+            <div class="form-group">
+              <label>Servidor</label>
+              <select id="fServidor">
+                <option value="">Selecione...</option>
+                <option>Brasil</option>
+                <option>América Latina</option>
+                <option>América do Norte</option>
+                <option>Europa</option>
+                <option>Ásia</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descrição / Bio *</label>
+            <textarea id="fBio" placeholder="Descreva itens, skins, personagens, histórico..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Valor (R$)</label>
+              <input type="text" id="fValor" placeholder="Ex: 49.90">
+            </div>
+            <div class="form-group">
+              <label>Imagem da Conta</label>
+              <div class="img-source-toggle">
+                <button type="button" class="img-toggle-btn active" id="btnUrl" onclick="setImgMode('url')">🔗 URL</button>
+                <button type="button" class="img-toggle-btn" id="btnGal" onclick="setImgMode('galeria')">📁 Galeria</button>
+              </div>
+              <div id="modeUrl">
+                <input type="text" id="fImagem" placeholder="https://..." oninput="previewImg()">
+              </div>
+              <div id="modeGaleria" style="display:none">
+                <div class="upload-zone" id="dropZone">
+                  <input type="file" id="fGalleryFile" accept="image/*" onchange="handleFileSelect(this.files[0])">
+                  <div class="upload-icon">🖼️</div>
+                  <div class="upload-text">Arraste ou <strong>clique para selecionar</strong></div>
+                  <div class="upload-text" style="font-size:.68rem;margin-top:3px">JPG, PNG, WEBP</div>
+                  <div class="upload-progress" id="uploadProgress"><div class="upload-progress-bar" id="uploadBar"></div></div>
+                  <div class="upload-status" id="uploadStatus"></div>
+                </div>
+              </div>
+              <img id="imgPreview" class="img-preview" alt="preview">
+            </div>
+          </div>
+          <button class="submit-btn" id="submitBtn" onclick="submitPost()">★ PUBLICAR CONTA</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTAS LIST -->
+    <div id="tab-contas" style="display:none">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Todas as Contas</div>
+          <div style="font-size:.73rem;color:var(--muted);font-family:'Share Tech Mono'" id="contaCount">—</div>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th></th><th>Título</th><th>Categoria</th><th>Nível</th><th>Valor</th><th>Ações</th></tr></thead>
+              <tbody id="contaTable"><tr class="empty-row"><td colspan="6">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-title">Editar Conta</div>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-group"><label>Título</label><input type="text" id="eTitulo"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="eCategoria">
+            <option>Diamante</option><option>Heroico</option><option>Grão-Mestre</option>
+            <option>Ouro</option><option>Platina</option><option>Bronze</option><option>Iniciante</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Nível</label><input type="text" id="eNivel"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Servidor</label>
+          <select id="eServidor">
+            <option value="">Selecione...</option>
+            <option>Brasil</option><option>América Latina</option><option>América do Norte</option><option>Europa</option><option>Ásia</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Valor (R$)</label><input type="text" id="eValor"></div>
+      </div>
+      <div class="form-group"><label>Bio / Descrição</label><textarea id="eBio"></textarea></div>
+      <div class="form-group">
+        <label>Imagem</label>
+        <div class="img-source-toggle">
+          <button type="button" class="img-toggle-btn active" id="eBtnUrl" onclick="setEditImgMode('url')">🔗 URL</button>
+          <button type="button" class="img-toggle-btn" id="eBtnGal" onclick="setEditImgMode('galeria')">📁 Galeria</button>
+        </div>
+        <div id="eModeUrl"><input type="text" id="eImagem" placeholder="https://..."></div>
+        <div id="eModeGaleria" style="display:none">
+          <div class="upload-zone" id="eDropZone">
+            <input type="file" id="eGalleryFile" accept="image/*" onchange="handleEditFileSelect(this.files[0])">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">Arraste ou <strong>clique para selecionar</strong></div>
+            <div class="upload-progress" id="eUploadProgress"><div class="upload-progress-bar" id="eUploadBar"></div></div>
+            <div class="upload-status" id="eUploadStatus"></div>
+          </div>
+        </div>
+        <img id="eImgPreview" class="img-preview" alt="preview" style="display:none">
+      </div>
+      <button class="submit-btn" onclick="saveEdit()">💾 SALVAR ALTERAÇÕES</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getDatabase, ref, push, set, remove, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBzPZpW13eHxcXSUKUuCD0viXvCRMDbAE0",
+    authDomain: "auth-d43e9.firebaseapp.com",
+    databaseURL: "https://auth-d43e9-default-rtdb.firebaseio.com",
+    projectId: "auth-d43e9",
+    storageBucket: "auth-d43e9.firebasestorage.app",
+    messagingSenderId: "688216918202",
+    appId: "1:688216918202:web:dcc7b6e7da96deede5da83",
+    measurementId: "G-85V167H4E0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const storage = getStorage(app);
+
+  const ADMIN_USER = 'admin';
+  const ADMIN_PASS = 'ffhacks123';
+
+  let allPosts = [];
+  let uploadedImageUrl = '';
+  let editUploadedImageUrl = '';
+
+  /* LOGIN */
+  window.doLogin = () => {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value.trim();
+    if (u === ADMIN_USER && p === ADMIN_PASS) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('layout').classList.add('visible');
+    } else {
+      document.getElementById('loginErr').style.display = 'block';
+    }
+  };
+  window.doLogout = () => {
+    document.getElementById('layout').classList.remove('visible');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+  };
+  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') window.doLogin(); });
+
+  /* TABS */
+  window.showTab = (tab) => {
+    ['dashboard','novo','contas'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'block':'none');
+    document.querySelectorAll('.nav-item').forEach((el,i) => el.classList.toggle('active', ['dashboard','novo','contas'][i]===tab));
+    const titles = {dashboard:'Dashboard <span>_</span>', novo:'Nova Conta <span>_</span>', contas:'Contas <span>_</span>'};
+    document.getElementById('pageTitle').innerHTML = titles[tab];
+  };
+
+  /* IMG MODE TOGGLE */
+  window.setImgMode = (mode) => {
+    const isUrl = mode === 'url';
+    document.getElementById('modeUrl').style.display = isUrl ? 'block' : 'none';
+    document.getElementById('modeGaleria').style.display = isUrl ? 'none' : 'block';
+    document.getElementById('btnUrl').classList.toggle('active', isUrl);
+    document.getElementById('btnGal').classList.toggle('active', !isUrl);
+    if (isUrl) uploadedImageUrl = '';
+    const prev = document.getElementById('imgPreview');
+    prev.style.display='none'; prev.src='';
+  };
+  window.setEditImgMode = (mode) => {
+    const isUrl = mode === 'url';
+    document.getElementById('eModeUrl').style.display = isUrl ? 'block' : 'none';
+    document.getElementById('eModeGaleria').style.display = isUrl ? 'none' : 'block';
+    document.getElementById('eBtnUrl').classList.toggle('active', isUrl);
+    document.getElementById('eBtnGal').classList.toggle('active', !isUrl);
+    if (isUrl) editUploadedImageUrl = '';
+  };
+
+  /* DRAG DROP */
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFileSelect(file);
+  });
+
+  /* UPLOAD */
+  window.handleFileSelect = (file) => {
+    if (!file) return;
+    const progress = document.getElementById('uploadProgress');
+    const bar = document.getElementById('uploadBar');
+    const status = document.getElementById('uploadStatus');
+    const preview = document.getElementById('imgPreview');
+    progress.style.display='block'; status.style.display='block';
+    status.className='upload-status'; status.textContent='Enviando...';
+    bar.style.width='0%'; uploadedImageUrl='';
+    const storageRef = sRef(storage, `contas/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on('state_changed',
+      snap => { bar.style.width = Math.round((snap.bytesTransferred/snap.totalBytes)*100)+'%'; },
+      err => { status.className='upload-status err'; status.textContent='⚠ Erro: '+err.message; },
+      async () => {
+        uploadedImageUrl = await getDownloadURL(task.snapshot.ref);
+        status.className='upload-status done'; status.textContent='✔ Enviada!';
+        preview.src=uploadedImageUrl; preview.style.display='block';
+      }
+    );
+  };
+
+  window.handleEditFileSelect = (file) => {
+    if (!file) return;
+    const progress = document.getElementById('eUploadProgress');
+    const bar = document.getElementById('eUploadBar');
+    const status = document.getElementById('eUploadStatus');
+    const preview = document.getElementById('eImgPreview');
+    progress.style.display='block'; status.style.display='block';
+    status.className='upload-status'; status.textContent='Enviando...';
+    bar.style.width='0%'; editUploadedImageUrl='';
+    const storageRef = sRef(storage, `contas/${Date.now()}_${file.name}`);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on('state_changed',
+      snap => { bar.style.width=Math.round((snap.bytesTransferred/snap.totalBytes)*100)+'%'; },
+      err => { status.className='upload-status err'; status.textContent='⚠ Erro: '+err.message; },
+      async () => {
+        editUploadedImageUrl=await getDownloadURL(task.snapshot.ref);
+        status.className='upload-status done'; status.textContent='✔ Enviada!';
+        preview.src=editUploadedImageUrl; preview.style.display='block';
+      }
+    );
+  };
+
+  /* FIREBASE */
+  onValue(ref(db, 'contas'), (snap) => {
+    allPosts = [];
+    const data = snap.val();
+    if (data) Object.entries(data).forEach(([id, val]) => allPosts.push({id,...val}));
+    allPosts.sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
+    updateStats(); renderRecentTable(); renderContaTable();
+  });
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = allPosts.length;
+    const cats = new Set(allPosts.map(p=>p.categoria).filter(Boolean));
+    document.getElementById('statCats').textContent = cats.size;
+    const vals = allPosts.map(p=>parseFloat(p.valor)).filter(v=>!isNaN(v));
+    document.getElementById('statMin').textContent = vals.length ? 'R$ '+Math.min(...vals).toFixed(2) : 'N/A';
+    document.getElementById('statMax').textContent = vals.length ? 'R$ '+Math.max(...vals).toFixed(2) : 'N/A';
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function renderRecentTable() {
+    const tbody = document.getElementById('recentTable');
+    const slice = allPosts.slice(0,8);
+    if (!slice.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="6">Nenhuma conta</td></tr>'; return; }
+    tbody.innerHTML = slice.map(p=>`
+      <tr>
+        <td>${p.imagem?`<img class="thumb" src="${p.imagem}" onerror="this.style.display='none'">` : '<div class="thumb-placeholder">🎮</div>'}</td>
+        <td class="title-cell">${p.titulo||'—'}</td>
+        <td class="cat-cell">${p.categoria||'—'}</td>
+        <td class="level-cell">NV ${p.nivel||'15'}</td>
+        <td class="price-cell">${p.valor?'R$ '+p.valor:'GRÁTIS'}</td>
+        <td style="color:var(--muted);font-size:.72rem">${fmtDate(p.timestamp)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderContaTable() {
+    const tbody = document.getElementById('contaTable');
+    document.getElementById('contaCount').textContent = allPosts.length+' conta(s)';
+    if (!allPosts.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="6">Nenhuma conta cadastrada</td></tr>'; return; }
+    tbody.innerHTML = allPosts.map(p=>`
+      <tr>
+        <td>${p.imagem?`<img class="thumb" src="${p.imagem}" onerror="this.style.display='none'">` : '<div class="thumb-placeholder">🎮</div>'}</td>
+        <td class="title-cell">${p.titulo||'—'}</td>
+        <td class="cat-cell">${p.categoria||'—'}</td>
+        <td class="level-cell">NV ${p.nivel||'15'}</td>
+        <td class="price-cell">${p.valor?'R$ '+p.valor:'GRÁTIS'}</td>
+        <td>
+          <button class="action-btn edit-btn" onclick="openEdit('${p.id}')">Editar</button>
+          <button class="action-btn del-btn" onclick="deletePost('${p.id}')">Excluir</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  window.previewImg = () => {
+    const url = document.getElementById('fImagem').value.trim();
+    const img = document.getElementById('imgPreview');
+    if (url) { img.src=url; img.style.display='block'; } else { img.style.display='none'; }
+  };
+
+  window.submitPost = async () => {
+    const titulo = document.getElementById('fTitulo').value.trim();
+    const categoria = document.getElementById('fCategoria').value;
+    const bio = document.getElementById('fBio').value.trim();
+    const valor = document.getElementById('fValor').value.trim();
+    const nivel = document.getElementById('fNivel').value.trim() || '15';
+    const servidor = document.getElementById('fServidor').value;
+    const urlMode = document.getElementById('modeUrl').style.display !== 'none';
+    const imagem = urlMode ? document.getElementById('fImagem').value.trim() : uploadedImageUrl;
+    const alertEl = document.getElementById('formAlert');
+
+    if (!titulo || !categoria || !bio) {
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Preencha título, categoria e descrição.'; return;
+    }
+    if (!urlMode && !uploadedImageUrl) {
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Aguarde o upload da imagem terminar.'; return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled=true; btn.textContent='Publicando...';
+
+    try {
+      const newRef = push(ref(db,'contas'));
+      await set(newRef, { titulo, categoria, bio, valor, nivel, servidor, imagem, timestamp:Date.now() });
+      alertEl.className='alert success'; alertEl.style.display='block';
+      alertEl.textContent='✔ Conta publicada com sucesso!';
+      ['fTitulo','fBio','fValor','fImagem','fNivel'].forEach(id => document.getElementById(id).value='');
+      document.getElementById('fCategoria').value='';
+      document.getElementById('fServidor').value='';
+      document.getElementById('imgPreview').style.display='none';
+      uploadedImageUrl='';
+    } catch(e) {
+      alertEl.className='alert error'; alertEl.style.display='block';
+      alertEl.textContent='⚠ Erro: '+e.message;
+    }
+    btn.disabled=false; btn.textContent='★ PUBLICAR CONTA';
+    setTimeout(()=>{ alertEl.style.display='none'; },4000);
+  };
+
+  window.deletePost = async (id) => {
+    if (!confirm('Excluir esta conta permanentemente?')) return;
+    await remove(ref(db,'contas/'+id));
+  };
+
+  window.openEdit = (id) => {
+    const p = allPosts.find(x=>x.id===id);
+    if (!p) return;
+    document.getElementById('editId').value=id;
+    document.getElementById('eTitulo').value=p.titulo||'';
+    document.getElementById('eCategoria').value=p.categoria||'';
+    document.getElementById('eNivel').value=p.nivel||'';
+    document.getElementById('eServidor').value=p.servidor||'';
+    document.getElementById('eValor').value=p.valor||'';
+    document.getElementById('eBio').value=p.bio||p.descricao||'';
+    document.getElementById('eImagem').value=p.imagem||'';
+    editUploadedImageUrl='';
+    setEditImgMode('url');
+    const prev=document.getElementById('eImgPreview');
+    if (p.imagem) { prev.src=p.imagem; prev.style.display='block'; } else { prev.style.display='none'; }
+    document.getElementById('editOverlay').classList.add('open');
+  };
+  window.closeEdit = () => document.getElementById('editOverlay').classList.remove('open');
+
+  window.saveEdit = async () => {
+    const id = document.getElementById('editId').value;
+    const editUrlMode = document.getElementById('eModeUrl').style.display !== 'none';
+    const imagem = editUrlMode
+      ? document.getElementById('eImagem').value.trim()
+      : (editUploadedImageUrl || document.getElementById('eImagem').value.trim());
+    await update(ref(db,'contas/'+id), {
+      titulo: document.getElementById('eTitulo').value.trim(),
+      categoria: document.getElementById('eCategoria').value,
+      nivel: document.getElementById('eNivel').value.trim(),
+      servidor: document.getElementById('eServidor').value,
+      valor: document.getElementById('eValor').value.trim(),
+      bio: document.getElementById('eBio').value.trim(),
+      imagem,
+    });
+    window.closeEdit();
+  };
+</script>
+</body>
+</html>
